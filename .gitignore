@@ -3,6 +3,9 @@
 data/
 img/
 venv/
+.env
+credentials.json
+token.json
 
 # Optional: Ignore other common files
 __pycache__/

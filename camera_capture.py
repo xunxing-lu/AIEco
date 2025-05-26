@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import os
 
+
 class CameraTranslator:
     def __init__(self, api_key, target_language="English"):
         """
@@ -161,7 +162,7 @@ def main():
         # Capture and translate
         result = translator.capture_and_translate(
             camera_index=0,  # Use default camera
-            save_image=True   # Save captured image
+            save_image=True   # Save captured image 
         )
         
         print("\n" + "="*50)
