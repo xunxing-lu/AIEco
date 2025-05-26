@@ -1,0 +1,10 @@
+# Ignore unnecessary folders
+.roo/
+data/
+img/
+venv/
+
+# Optional: Ignore other common files
+__pycache__/
+*.pyc
+.DS_Store
