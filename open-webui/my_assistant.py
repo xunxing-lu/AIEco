@@ -13,6 +13,8 @@ import os
 from openai import AsyncOpenAI
 from typing import Any, Dict, List
 from dotenv import load_dotenv
+from pydantic_ai.mcp import MCPServerStdio
+from contextlib import asynccontextmanager
 
 app = FastAPI()
 
@@ -27,12 +29,39 @@ def get_model():
     api_key = os.getenv("OPENAI_API_KEY")
     return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
 
+# Global agent variable
+
+
+# Create Brave Search MCP server
+# brave_server = MCPServerStdio(
+#     'npx', 
+#     ['-y', '@modelcontextprotocol/server-brave-search'],
+#     env={"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")}
+# )
+
+# Create the agent
+# primary_agent = Agent(
+#     get_model(),
+#     system_prompt="""
+#     You are a helpful AI agent with access to web search capabilities and personal knowledge data.
+    
+#     When users ask questions:
+#     1. First check if you need to search personal knowledge using the search_my_knowledge_data tool
+#     2. If you need current information or web searches, use the Brave search capabilities
+#     3. Always cite your sources when using search results
+#     4. Provide accurate, helpful, and well-formatted responses
+#     """,
+#     mcp_servers=[brave_server]
+# )
+
 primary_agent = Agent(
     get_model(),
     system_prompt="""
     you are a good local agent that processes the input message and returns a response.
     """
 )
+
+# primary_agent.run_mcp_servers()
 
 async def get_embedding(text: str) -> List[float]:
     """Get embedding vector from OpenAI."""
@@ -161,8 +190,6 @@ def list_models():
 @app.post("/v1/chat/completions")
 async def chat(request: ChatRequest):
     user_message = request.messages[-1].content
-
-    print(request.stream)
     
     if True:
         # Return streaming response
