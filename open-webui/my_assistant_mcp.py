@@ -16,6 +16,10 @@ from dotenv import load_dotenv
 from pydantic_ai.mcp import MCPServerStdio
 from contextlib import asynccontextmanager
 import logging
+import aiofiles
+import base64
+from openai import AsyncOpenAI
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -47,6 +51,81 @@ async def get_embedding(text: str) -> List[float]:
     except Exception as e:
         logger.error(f"Error getting embedding: {e}")
         return [0] * 1536  # Return zero vector on error
+    
+async def read_and_analyze_image(image_path: str, prompt: str = "What do you see in this image?"):
+    """
+    Async function to read an image file and send it to GPT-4o Vision for analysis using OpenAI client.
+    
+    Args:
+        image_path (str): Path to the image file
+        prompt (str): Question/prompt to ask about the image
+        api_key (str): OpenAI API key
+    
+    Returns:
+        dict: Response from GPT-4o Vision API
+    """
+    
+    try:
+        # Initialize async OpenAI client
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        # Read image file asynchronously
+        async with aiofiles.open(image_path, 'rb') as image_file:
+            image_data = await image_file.read()
+        
+        # Convert to base64
+        base64_image = base64.b64encode(image_data).decode('utf-8')
+        
+        # Determine image format
+        image_path_obj = Path(image_path)
+        image_format = image_path_obj.suffix.lower().replace('.', '')
+        if image_format == 'jpg':
+            image_format = 'jpeg'
+        
+        # Send request to OpenAI API using the official client
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/{image_format};base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=300
+        )
+        
+        return {
+            "success": True,
+            "content": response.choices[0].message.content,
+            "usage": {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": response.usage.total_tokens
+            },
+            "model": response.model
+        }
+                    
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "error": f"Image file not found: {image_path}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Error: {str(e)}"
+        }
 
 async def search_my_knowledge_data(query: str) -> dict[str, str]:
     """
@@ -82,26 +161,26 @@ async def search_my_knowledge_data(query: str) -> dict[str, str]:
         if not result.data:
             return {
                 "result": """
-## No Knowledge Data Found
+                    ## No Knowledge Data Found
 
-I couldn't find any Knowledge information matching your query. Please try:
-- Using different search terms
-- Checking for typos in your query
-- Providing more specific details about what you're looking for
+                    I couldn't find any Knowledge information matching your query. Please try:
+                    - Using different search terms
+                    - Checking for typos in your query
+                    - Providing more specific details about what you're looking for
 
-How would you like to proceed?
-"""
+                    How would you like to proceed?
+                    """
             }
             
         # Format the results as a table
         formatted_response = """
-## Knowledge Information Found
+                            ## Knowledge Information Found
 
-I found the following records based on your query:
+                            I found the following records based on your query:
 
-| Content |
-|---------|
-"""
+                            | Content |
+                            |---------|
+                            """
         
         for doc in result.data:
             # Escape any pipe characters in the strings to avoid breaking the table
@@ -112,24 +191,26 @@ I found the following records based on your query:
             
         formatted_response += """
 
-## Response Instructions
-When responding to the user:
-1. Present the table of content information
-2. Make sure there is 1 column: Content.
-"""
+                            ## Response Instructions
+                            When responding to the user:
+                            1. Present the table of content information
+                            2. Make sure there is 1 column: Content.
+                            """
         
         return {"result": formatted_response}
         
     except Exception as e:
         logger.error(f"Error retrieving documentation: {e}")
         error_message = f"""
-## Error Retrieving Data
+                        ## Error Retrieving Data
 
-I encountered an error while searching for information: {str(e)}
+                        I encountered an error while searching for information: {str(e)}
 
-Please try again in a few moments or contact support if the problem persists.
-"""
+                        Please try again in a few moments or contact support if the problem persists.
+                        """
         return {"result": error_message}
+    
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -165,20 +246,22 @@ async def lifespan(app: FastAPI):
         primary_agent = Agent(
             get_model(),
             system_prompt="""
-You are a helpful AI agent with access to web search capabilities, WhatsApp functionality, and personal knowledge data.
+                You are a helpful AI agent with access to web search capabilities, WhatsApp functionality, personal knowledge data, image vision.
 
-When users ask questions:
-1. First check if you need to search personal knowledge using the search_my_knowledge_data tool
-2. If you need current information or web searches, use the Brave search capabilities
-3. If you need to send WhatsApp messages or interact with WhatsApp, use the WhatsApp MCP server tools
-4. Always cite your sources when using search results
-5. Provide accurate, helpful, and well-formatted responses
-""",
+                When users ask questions:
+                1. First check if you need to search personal knowledge using the search_my_knowledge_data tool
+                2. If you need current information or web searches, use the Brave search capabilities
+                3. If you need to send WhatsApp messages or interact with WhatsApp, use the WhatsApp MCP server tools
+                4. Always cite your sources when using search results
+                5. Provide accurate, helpful, and well-formatted responses
+                6. use read_and_analyze_image tool to analyze images
+                """,
             mcp_servers=[brave_server, whatsapp_server]
         )
         
         # Register the knowledge search tool
         primary_agent.tool_plain(search_my_knowledge_data)
+        primary_agent.tool_plain(read_and_analyze_image)
         
         # Start MCP servers using the context manager properly
         logger.info("Starting MCP servers...")
