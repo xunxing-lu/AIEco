@@ -91,3 +91,6 @@ google-auth-oauthlib
 google-auth-httplib2 
 google-api-python-client
 aiofiles
+PyPDF2
+docx2txt
+python-multipart
