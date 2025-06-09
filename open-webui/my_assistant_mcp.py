@@ -52,6 +52,29 @@ file_agent = Agent(
                     You are a helpful AI agent who can tell the type of the file, and read its content.
                 """,
             )
+
+github_agent = Agent(
+                get_model(),  
+                system_prompt="""
+                    You are a GitHub specialist. Help users interact with GitHub repositories and features.
+                """,
+            )
+
+crawai_agent = Agent(
+                get_model(),
+                system_prompt="""
+                    You are a web crawl specialist. Help users interact with website crawl requiremnt.
+                """,
+            )
+
+brave_agent = Agent(
+                get_model(),
+                system_prompt="""
+                    You are a web content research specialist. Help users interact with web content research requiremnt.
+                """,
+            )
+
+
 # Store uploaded files metadata
 uploaded_files = {}
 
@@ -105,6 +128,54 @@ async def read_and_analyze_file(query: str):
     """
     print(f"Calling file agent with query: {query}")
     result = await file_agent.run(query)
+    return {"result": result.data}
+
+async def use_github_agent(query: str) -> dict[str, str]:
+    """
+    Interact with GitHub through the GitHub subagent.
+    Use this tool when the user needs to access repositories, issues, PRs, or other GitHub resources.
+
+    Args:
+        ctx: The run context.
+        query: The instruction for the GitHub agent.
+
+    Returns:
+        The response from the GitHub agent.
+    """
+    print(f"Calling GitHub agent with query: {query}")
+    result = await github_agent.run(query)
+    return {"result": result.data}
+
+async def use_craw_ai_agent(query: str) -> dict[str, str]:
+    """
+    Interact with web crawl through the craw ai subagent.
+    Use this tool when the user needs to crawl website.
+
+    Args:
+        ctx: The run context.
+        query: The query for the craw ai agent.
+
+    Returns:
+        The response from the craw ai agent.
+    """
+    print(f"Calling Craw AI agent with query: {query}")
+    result = await crawai_agent.run(query)
+    return {"result": result.data}
+
+async def use_brave_search_agent(query: str) -> dict[str, str]:
+    """
+    Interact with web content research through the brave search subagent.
+    Use this tool when the user needs to research on web.
+
+    Args:
+        ctx: The run context.
+        query: The query for the brave search agent.
+
+    Returns:
+        The response from the brave search agent.
+    """
+    print(f"Calling brave search agent with query: {query}")
+    result = await  brave_agent.run(query)
     return {"result": result.data}
 
 @file_agent.tool_plain
@@ -514,6 +585,7 @@ async def analyze_file_by_extension(file_path: str, extension: str, prompt: str)
 async def lifespan(app: FastAPI):
     """Manage the lifecycle of the FastAPI app and MCP servers"""
     global primary_agent
+    global github_agent
     
     # Startup
     logger.info("Starting up FastAPI application...")
@@ -539,6 +611,21 @@ async def lifespan(app: FastAPI):
             [r'C:\Projects\WhatsApp\whatsapp-mcp\whatsapp-mcp-server\main.py']
         )
 
+        github_mcp_server = MCPServerStdio(
+            'npx',
+            ['-y', '@modelcontextprotocol/server-github'],
+            env={"GITHUB_PERSONAL_ACCESS_TOKEN": os.getenv("GITHUB_ACCESS_TOKEN")}
+        )
+
+        craw_ai_server = MCPServerStdio(
+            'C:\\Projects\\crawl4ai-mcp\\venv\\Scripts\\python.exe',
+            ['C:\\Projects\\crawl4ai-mcp\\crawl_mcp.py']
+        )
+
+        github_agent._mcp_servers = [github_mcp_server]
+        crawai_agent._mcp_servers = [craw_ai_server]
+        brave_agent._mcp_servers = [brave_server]
+
         # Create the agent
         logger.info("Creating primary agent...")
         primary_agent = Agent(
@@ -548,25 +635,33 @@ async def lifespan(app: FastAPI):
 
                 When users ask questions:
                 1. First check if you need to search personal knowledge using the search_my_knowledge_data tool
-                2. If you need current information or web searches, use the Brave search capabilities
-                3. If you need to send WhatsApp messages or interact with WhatsApp, use the WhatsApp MCP server tools
-                4. Always cite your sources when using search results
-                5. Provide accurate, helpful, and well-formatted responses
-                6. use read_and_analyze_image tool to analyze images
-                7. use read_and_analyze_file tool to read content from file
+                2. If you need to send WhatsApp messages or interact with WhatsApp, use the WhatsApp MCP server tools
+                3. Always cite your sources when using search results
+                4. Provide accurate, helpful, and well-formatted responses
+                5. use read_and_analyze_image tool to analyze images
+                6. use read_and_analyze_file tool to read content from file
                 """,
-            mcp_servers=[brave_server, whatsapp_server]
+            mcp_servers=[whatsapp_server]
         )
         
         # Register the knowledge search tool
         primary_agent.tool_plain(search_my_knowledge_data)
         primary_agent.tool_plain(read_and_analyze_image)
         primary_agent.tool_plain(read_and_analyze_file)
+        primary_agent.tool_plain(use_github_agent)
+        primary_agent.tool_plain(use_craw_ai_agent)
+        primary_agent.tool_plain(use_brave_search_agent)
         
         # Start MCP servers using the context manager properly
         logger.info("Starting MCP servers...")
         mcp_context = primary_agent.run_mcp_servers()
         await mcp_context.__aenter__()
+        mcp_context_github = github_agent.run_mcp_servers()
+        await mcp_context_github.__aenter__()
+        mcp_context_craw_ai = crawai_agent.run_mcp_servers()
+        await mcp_context_craw_ai.__aenter__()
+        mcp_context_brave = brave_agent.run_mcp_servers()
+        await mcp_context_brave.__aenter__()
         logger.info("MCP servers started successfully!")
         
         yield
@@ -578,13 +673,13 @@ async def lifespan(app: FastAPI):
         primary_agent = Agent(
             get_model(),
             system_prompt="""
-You are a helpful AI agent with access to personal knowledge data.
+                            You are a helpful AI agent with access to personal knowledge data.
 
-When users ask questions:
-1. Check if you need to search personal knowledge using the search_my_knowledge_data tool
-2. Provide accurate, helpful, and well-formatted responses
-3. Note that web search capabilities are currently unavailable
-"""
+                            When users ask questions:
+                            1. Check if you need to search personal knowledge using the search_my_knowledge_data tool
+                            2. Provide accurate, helpful, and well-formatted responses
+                            3. Note that web search capabilities are currently unavailable
+                            """
         )
         primary_agent.tool_plain(search_my_knowledge_data)
         logger.info("Fallback agent created successfully!")
@@ -607,26 +702,6 @@ app = FastAPI(lifespan=lifespan)
 # class Message(BaseModel):
 #     role: str
 #     content: str
-
-class TextContent(BaseModel):
-    type: str = "text"
-    text: str
-
-class ImageUrlContent(BaseModel):
-    type: str = "image_url"
-    image_url: Dict[str, str]  # {"url": "data:image/..."}
-
-class FileUrlContent(BaseModel):
-    type: str = "file_url"
-    file_url: Dict[str, str]  # {"url": "data:...", "type": "application/pdf", "name": "document.pdf"}
-
-class DocumentContent(BaseModel):
-    type: str = "document"
-    document: Dict[str, str]  # {"content": "base64...", "mime_type": "application/pdf", "name": "doc.pdf"}
-
-# Union type for all content types
-ContentItem = Union[TextContent, ImageUrlContent, FileUrlContent, DocumentContent, Dict[str, Any]]
-
 class Message(BaseModel):
     role: str
     content: Union[str, List[Dict[str, Any]]]  # Keep it simple - just allow dicts
