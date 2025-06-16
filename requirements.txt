@@ -94,3 +94,5 @@ aiofiles
 PyPDF2
 docx2txt
 python-multipart
+python-docx
+pydub
