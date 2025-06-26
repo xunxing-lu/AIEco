@@ -5,6 +5,7 @@ from pydantic_ai import Agent, RunContext
 from pydantic import BaseModel, Field
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse,UserPromptPart, TextPart
 import uvicorn
 import json
 import asyncio
@@ -25,6 +26,7 @@ import docx2txt
 import tempfile
 import shutil
 from datetime import datetime
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -925,6 +927,8 @@ async def chat(request: ChatRequest):
     if request.stream:
         # Return streaming response
         logger.info("Streaming response enabled")
+        message_history.append(ModelRequest(parts=[UserPromptPart(content=user_message)]))
+    
         return StreamingResponse(
             stream_chat_response(user_message, request.model),
             media_type="text/event-stream",
@@ -962,10 +966,14 @@ async def chat(request: ChatRequest):
                 content={"error": f"Internal server error: {str(e)}"}
             )
 
+
+message_history = []
+
 async def stream_chat_response(message: str, model: str):
     """Generate streaming chat response in OpenAI format"""
     chunk_id = "chatcmpl-local-stream"
     
+    created_timestamp = int(time.time())
     try:
         # Send initial chunk
         initial_chunk = {
@@ -986,10 +994,41 @@ async def stream_chat_response(message: str, model: str):
         }
         yield f"data: {json.dumps(initial_chunk)}\n\n"
         
+        full_response = ""
         # Stream the agent response
-        async with primary_agent.run_stream(message) as response:
+        async with primary_agent.run_stream(message, message_history=message_history) as response:
+            # async for chunk in response.stream():
+            #     if hasattr(chunk, 'data'):
+            #         content = chunk.data
+            #     elif hasattr(chunk, 'content'):
+            #         content = chunk.content
+            #     else:
+            #         content = str(chunk)
+                
+            #     # Accumulate full response for session history
+            #     full_response += content
+                
+            #     # Create streaming chunk
+            #     stream_chunk = {
+            #         "id": chunk_id,
+            #         "object": "chat.completion.chunk",
+            #         "created": created_timestamp,
+            #         "model": model,
+            #         "choices": [
+            #             {
+            #                 "index": 0,
+            #                 "delta": {
+            #                     "content": content
+            #                 },
+            #                 "finish_reason": None
+            #             }
+            #         ]
+            #     }
+            #     yield f"data: {json.dumps(stream_chunk)}\n\n"
             data = await response.get_data()
             # Create a streaming chunk with the content
+
+            full_response += data
             stream_chunk = {
                 "id": chunk_id,
                 "object": "chat.completion.chunk",
@@ -1007,6 +1046,9 @@ async def stream_chat_response(message: str, model: str):
             }
             
             yield f"data: {json.dumps(stream_chunk)}\n\n"
+
+        message_history.append(ModelResponse(parts=[TextPart(content=full_response)]))
+    
         
         # Send final chunk to indicate completion
         final_chunk = {
@@ -1046,10 +1088,19 @@ async def stream_chat_response(message: str, model: str):
         yield f"data: {json.dumps(error_chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
+
 async def run_local_agent(message):
     """Non-streaming agent run for backward compatibility"""
     try:
-        result = await primary_agent.run(message)
+        # Add current message to history
+        # message_history.append({"role": "user", "content": message})
+        # add message history here
+        result = await primary_agent.run(message, message_history=message_history)
+
+        # Add response to history
+        # if hasattr(result, 'data') and result.data:
+        #     message_history.append({"role": "assistant", "content": result.data})
+
         return result.data
     except Exception as e:
         logger.error(f"Error running agent: {e}")

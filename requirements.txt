@@ -96,3 +96,5 @@ docx2txt
 python-multipart
 python-docx
 pydub
+graphiti-core==0.11.6
+neo4j==5.28.1
