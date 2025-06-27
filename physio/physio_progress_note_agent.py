@@ -24,6 +24,12 @@ import os
 from pydantic_ai.models.gemini import GeminiModel
 from pydantic_ai.providers.google_gla import GoogleGLAProvider
 
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
 gavin_case = {
@@ -40,7 +46,7 @@ margrate_case = {
     'output_file' : r"../data/physio/Margrate/Progress_Note_Margrate_updated.docx"
 }
 
-picked_case = gavin_case
+picked_case = margrate_case
 
 def update_word_template(template_path, output_path, replacement_dict, image_replacements):
     doc = Document(template_path)
@@ -172,12 +178,13 @@ def get_model():
     return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
 
 def get_gemini_model():
-    api_key = os.getenv("GEMINI_API_KEY")
+    llm = 'google/gemini-2.5-pro'
+    logger.info(f"Using model: {llm}")
+    base_url = 'https://openrouter.ai/api/v1'
+    api_key = os.getenv("OPEN_ROUTER_API_KEY")
+    return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
 
-    return GeminiModel(
-        'gemini-2.0-flash', 
-        provider=GoogleGLAProvider(api_key=api_key)
-    )
+selected_model = get_model()
 
 def read_word(file_path):
     """
@@ -212,7 +219,7 @@ sample_progress_note_1 = read_word('../data/physio/Gavin/Gavin Progress Note.doc
 sample_progress_note_2 = read_word('../data/physio/Margrate/Margaret Demo Progress Note.docx')
 
 primary_agent = Agent(
-    get_model(),
+    selected_model,
     # get_gemini_model(),
     system_prompt=f"""
     You are a Senior Physiotherapist who is very experienced in Physio Assessment with patient and writing Progress Note.

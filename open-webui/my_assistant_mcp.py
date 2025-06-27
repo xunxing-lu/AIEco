@@ -46,6 +46,29 @@ def get_model():
     api_key = os.getenv("OPENAI_API_KEY")
     return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
 
+# def get_model():
+
+#     # google_model_name = "google/gemini-2.5-pro-exp-03-25:free"
+#     # model = OpenAIModel(  
+#     #     google_model_name,
+#     #     base_url = 'https://openrouter.ai/api/v1',
+#     #     api_key=os.getenv('OPEN_ROUTER_API_KEY')
+#     # ) if os.getenv('OPEN_ROUTER_API_KEY', None) else OpenAIModel(llm)
+#     llm = 'google/gemini-2.5-pro'
+#     logger.info(f"Using model: {llm}")
+#     base_url = 'https://openrouter.ai/api/v1'
+#     api_key = os.getenv("OPEN_ROUTER_API_KEY")
+#     return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
+
+# def get_model():
+#     #  turn off stream for the moment
+#     llm = 'claude-sonnet-4-20250514'
+#     # llm = 'claude-3-7-sonnet-20250219'
+#     logger.info(f"Using model: {llm}")
+#     base_url = 'https://api.anthropic.com/v1'
+#     api_key = os.getenv("ANTHROPIC_API_KEY")
+#     return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
+
 # Global agent variable
 primary_agent = None
 file_agent = Agent(
@@ -936,6 +959,7 @@ async def chat(request: ChatRequest):
         )
     else:
         # Return non-streaming response
+        logger.info("Sync response enabled")
         try:
             agent_response = await run_local_agent(user_message)
             return {
