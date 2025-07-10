@@ -98,3 +98,9 @@ python-docx
 pydub
 graphiti-core==0.11.6
 neo4j==5.28.1
+pypandoc-binary
+SpeechRecognition
+pyaudio
+pygame
+webrtcvad
+pvporcupine

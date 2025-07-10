@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 import asyncio
 from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor
+import httplib2
+from googleapiclient.http import build_http
 
 # Scopes needed for Drive API
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
@@ -53,15 +55,17 @@ class GoogleDriveFolderReader:
         # If no valid credentials, get new ones
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                request = Request(timeout=30)
+                creds.refresh(request)
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     self.credentials_file, SCOPES)
-                creds = flow.run_local_server(port=11111)
+                creds = flow.run_local_server(port=11111, timeout_seconds=120)
             
             # Save credentials for next run
             with open(self.token_file, 'w') as token:
                 token.write(creds.to_json())
+
         
         self.service = build('drive', 'v3', credentials=creds)
         print("Successfully authenticated with Google Drive API")

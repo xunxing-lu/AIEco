@@ -6,9 +6,12 @@ from openai import OpenAI
 import tempfile
 import time
 from pygame import mixer
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Initialize OpenAI client - requires API key in environment variables
-client = OpenAI(api_key="")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def record_audio():
     """Record audio from microphone until silence is detected"""
@@ -35,9 +38,13 @@ def transcribe_audio(audio):
         # Save audio to a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_audio:
             temp_filename = temp_audio.name
+
+        
             
         with open(temp_filename, "wb") as f:
             f.write(audio.get_wav_data())
+
+        print(f"Transcribing audio from {temp_filename}...")
         
         # Transcribe using OpenAI
         with open(temp_filename, "rb") as audio_file:

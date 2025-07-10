@@ -46,7 +46,30 @@ margrate_case = {
     'output_file' : r"../data/physio/Margrate/Progress_Note_Margrate_updated.docx"
 }
 
-picked_case = margrate_case
+test_case = {
+    'ctpt': '../data/physio/Test/testpt.txt',
+    'solo': '../data/physio/Test/testsolo.txt',
+    'template_file' : r"../data/physio/Progress_Note_Template.docx",
+    'output_file' : r"../data/physio/Test/Progress_Note_Test_updated.docx"
+}
+
+def get_g_model():
+    llm = 'o3'
+    # print(llm)
+    base_url = 'https://api.openai.com/v1'
+    # print(base_url)
+    api_key = os.getenv("OPENAI_API_KEY")
+    # print(api_key)
+    return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
+
+def get_o_model():
+    llm = 'google/gemini-2.5-pro'
+    # logger.info(f"Using model: {llm}")
+    base_url = 'https://openrouter.ai/api/v1'
+    api_key = os.getenv("OPEN_ROUTER_API_KEY")
+    return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
+
+
 
 def update_word_template(template_path, output_path, replacement_dict, image_replacements):
     doc = Document(template_path)
@@ -132,6 +155,17 @@ def update_word_template(template_path, output_path, replacement_dict, image_rep
     print(f"Document saved to {output_path}")
 
 
+
+
+picked_case = test_case
+selected_model = get_o_model()
+
+
+
+
+
+
+
 class Assessment(BaseModel):
     Assessment_Date: str = Field(description='date of assessment, use current date if not provided')
     Initial_Assessment_Info: str = Field(description='Brief client summary including age, gender, referral reason (e.g., PT under HCP), and primary condition to be managed')
@@ -166,25 +200,6 @@ class Assessment(BaseModel):
     PLB_Info: str = Field(description='Assessment of client’s ability to perform pursed-lip breathing (PLB), including use of physical cues (e.g., “kissing lips” technique), level of prompting required, and ability to reproduce the technique independently. Note consistency of demonstration, effectiveness, and client responsiveness to cueing. Use structured sentences or bullet points for clarity.')
     Physio_Info: str = Field(description='Physiotherapist\'s name')
     Physio_title_Info: str = Field(description='Physiotherapist\'s title')
-
-# ========== Helper function to get model configuration ==========
-def get_model():
-    llm = 'o3'
-    print(llm)
-    base_url = 'https://api.openai.com/v1'
-    print(base_url)
-    api_key = os.getenv("OPENAI_API_KEY")
-    print(api_key)
-    return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
-
-def get_gemini_model():
-    llm = 'google/gemini-2.5-pro'
-    logger.info(f"Using model: {llm}")
-    base_url = 'https://openrouter.ai/api/v1'
-    api_key = os.getenv("OPEN_ROUTER_API_KEY")
-    return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
-
-selected_model = get_model()
 
 def read_word(file_path):
     """

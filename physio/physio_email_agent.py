@@ -38,7 +38,31 @@ margrate_case = {
     'output_file' : r"../data/physio/Margrate/Email_Margrate.docx"
 }
 
-picked_case = gavin_case
+test_case = {
+    'ctpt': '../data/physio/Test/testpt.txt',
+    'solo': '../data/physio/Test/testsolo.txt',
+    'progress_note' : r"../data/physio/Test/Progress_Note_Test_updated.docx",
+    'output_file' : r"../data/physio/Test/Email_Test.docx"
+}
+
+# ========== Helper function to get model configuration ==========
+def get_g_model():
+    llm = 'o3'
+    # print(llm)
+    base_url = 'https://api.openai.com/v1'
+    # print(base_url)
+    api_key = os.getenv("OPENAI_API_KEY")
+    # print(api_key)
+    return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
+
+def get_o_model():
+    llm = 'google/gemini-2.5-pro'
+    base_url = 'https://openrouter.ai/api/v1'
+    api_key = os.getenv("OPEN_ROUTER_API_KEY")
+    return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
+
+
+
 
 def write_text_to_word(text, filename="document.docx", title=None):
     """
@@ -72,16 +96,6 @@ def write_text_to_word(text, filename="document.docx", title=None):
     
     return filename
 
-# ========== Helper function to get model configuration ==========
-def get_model():
-    llm = 'o3'
-    print(llm)
-    base_url = 'https://api.openai.com/v1'
-    print(base_url)
-    api_key = os.getenv("OPENAI_API_KEY")
-    print(api_key)
-    return OpenAIModel(llm, provider=OpenAIProvider(base_url=base_url, api_key=api_key))
-
 def read_word(file_path):
     """
     read text from word
@@ -102,6 +116,23 @@ def read_word(file_path):
     except Exception as e:
         return f"Error processing file: {str(e)}"
     
+
+    
+    
+
+
+picked_case = margrate_case
+selected_model = get_o_model()
+
+
+
+
+
+
+
+
+
+    
 conversation1 = ''
 with open(picked_case['ctpt'], 'r', encoding='utf-8') as file:
     conversation1 = file.read()
@@ -116,7 +147,7 @@ email2 = read_word('../data/physio/Margrate/Margaret Demo Email.docx')
 progress_note = read_word(picked_case['progress_note'])
 
 primary_agent = Agent(
-    get_model(),
+    selected_model,
     system_prompt=f"""
     You are a Senior Physiotherapist who is very experienced in writing email to the care coordinator stakeholder based on conversation info and progress note.
     You will have one conversation with patient, then have solo conversation which helps to recall the key content.
