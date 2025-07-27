@@ -99,6 +99,13 @@ brave_agent = Agent(
                 """,
             )
 
+file_system_agent = Agent(
+                get_model(),
+                system_prompt="""
+                    You are a filesystem specialist. Help users manage their files and directories.
+                """,
+            )
+
 
 # Store uploaded files metadata
 uploaded_files = {}
@@ -201,6 +208,22 @@ async def use_brave_search_agent(query: str) -> dict[str, str]:
     """
     print(f"Calling brave search agent with query: {query}")
     result = await  brave_agent.run(query)
+    return {"result": result.data}
+
+async def use_file_system_agent(query: str) -> dict[str, str]:
+    """
+    Interact with local files and directories.
+    Use this tool when the user needs to manage their files and directories.
+
+    Args:
+        ctx: The run context.
+        query: The query for the file system agent.
+
+    Returns:
+        The response from the file system agent.
+    """
+    print(f"Calling file system agent with query: {query}")
+    result = await  file_system_agent.run(query)
     return {"result": result.data}
 
 @file_agent.tool_plain
@@ -647,9 +670,15 @@ async def lifespan(app: FastAPI):
             ['C:\\Projects\\crawl4ai-mcp\\crawl_mcp.py']
         )
 
+        filesystem_server = MCPServerStdio(
+            'npx', 
+            ['-y', '@modelcontextprotocol/server-filesystem', os.getenv("LOCAL_FILE_DIR")]
+        )
+
         github_agent._mcp_servers = [github_mcp_server]
         crawai_agent._mcp_servers = [craw_ai_server]
         brave_agent._mcp_servers = [brave_server]
+        file_system_agent._mcp_servers = [filesystem_server]
 
         # Create the agent
         logger.info("Creating primary agent...")
@@ -676,6 +705,7 @@ async def lifespan(app: FastAPI):
         primary_agent.tool_plain(use_github_agent)
         primary_agent.tool_plain(use_craw_ai_agent)
         primary_agent.tool_plain(use_brave_search_agent)
+        primary_agent.tool_plain(use_file_system_agent)
         
         # Start MCP servers using the context manager properly
         logger.info("Starting MCP servers...")
@@ -687,6 +717,8 @@ async def lifespan(app: FastAPI):
         await mcp_context_craw_ai.__aenter__()
         mcp_context_brave = brave_agent.run_mcp_servers()
         await mcp_context_brave.__aenter__()
+        mcp_context_fs = file_system_agent.run_mcp_servers()
+        await mcp_context_fs.__aenter__()
         logger.info("MCP servers started successfully!")
         
         yield
