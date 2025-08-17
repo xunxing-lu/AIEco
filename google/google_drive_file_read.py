@@ -529,7 +529,7 @@ def main():
     #             print(f"  - {file_data['name']}: {len(file_data['content'])} characters")
 
     
-    reader.get_changed_files(minutes_back=180)
+    reader.get_changed_files(minutes_back=44640)
     # Example 3: Read files by folder ID (if you know it)
     # folder_id = "your_folder_id_here"
     # files_content = reader.read_folder(folder_id, include_subfolders=True)

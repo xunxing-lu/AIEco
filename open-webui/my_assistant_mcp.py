@@ -40,7 +40,8 @@ UPLOAD_DIR = Path("./uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 def get_model():
-    llm = 'gpt-4o'
+    llm = 'gpt-5'
+    logger.info(f"I am using model: {llm}")
     logger.info(f"Using model: {llm}")
     base_url = 'https://api.openai.com/v1'
     api_key = os.getenv("OPENAI_API_KEY")
@@ -356,7 +357,7 @@ async def read_and_analyze_image(image_path: str, prompt: str = "What do you see
         
         # Send request to OpenAI API using the official client
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5",
             messages=[
                 {
                     "role": "user",
