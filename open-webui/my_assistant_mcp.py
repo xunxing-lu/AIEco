@@ -27,6 +27,7 @@ import tempfile
 import shutil
 from datetime import datetime
 import time
+import aiohttp
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -323,7 +324,51 @@ async def read_and_analyze_word_file(file_path: str):
             "result": None
         }
 
+async def generate_image(query: str):
+    """
+    Generate image and return URL + markdown for Open WebUI display
+    """
+    logger.info(f"generating images: {query}")
+    client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    try:
+        response = await client.images.generate(
+            model="dall-e-3",
+            prompt=query,
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+        
+        image_url = response.data[0].url
+        revised_prompt = response.data[0].revised_prompt
 
+        image_url = image_url.replace('&amp;', '&')
+        
+        # Multiple format attempts for maximum compatibility
+        return f"""🎨 **Image Generated Successfully!**
+
+        **Prompt:** `{query}`
+        **Revised:** `{revised_prompt}`
+
+        **Generated Image:**
+
+        ![Generated Image]({image_url})
+
+        <img src="{image_url}" alt="Generated Image" width="512" style="max-width: 100%; height: auto;">
+
+        <details>
+        <summary>📋 Image Details</summary>
+
+        - **Direct URL:** [{image_url}]({image_url})
+        - **Size:** 1024x1024px
+        - **Model:** DALL-E 3
+        - **Quality:** Standard
+
+        </details>"""
+        
+    except Exception as e:
+        return f"❌ **Error:** {str(e)}"
 
 async def read_and_analyze_image(image_path: str, prompt: str = "What do you see in this image?"):
     """
@@ -695,6 +740,7 @@ async def lifespan(app: FastAPI):
                 4. Provide accurate, helpful, and well-formatted responses
                 5. use read_and_analyze_image tool to analyze images
                 6. use read_and_analyze_file tool to read content from file
+                7. use generate_image to draw something
                 """,
             mcp_servers=[whatsapp_server]
         )
@@ -707,6 +753,7 @@ async def lifespan(app: FastAPI):
         primary_agent.tool_plain(use_craw_ai_agent)
         primary_agent.tool_plain(use_brave_search_agent)
         primary_agent.tool_plain(use_file_system_agent)
+        primary_agent.tool_plain(generate_image)
         
         # Start MCP servers using the context manager properly
         logger.info("Starting MCP servers...")

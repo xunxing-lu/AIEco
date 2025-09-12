@@ -125,7 +125,7 @@ class Assessment(BaseModel):
 
 # ========== Helper function to get model configuration ==========
 def get_model():
-    llm = 'gpt-4o'
+    llm = 'gpt-5'
     print(llm)
     base_url = 'https://api.openai.com/v1'
     print(base_url)
@@ -192,11 +192,11 @@ replacements = {
 
 # Provide image path for [Scooter_Image]
 image_replacements = {
-    'Scooter_Image': './img/scooter.png'  # Replace with your actual image path
+    'Scooter_Image': '../data/scooter.png'  # Replace with your actual image path
 }
 
 # File paths
-input_path = r"C:\Projects\prag\data\001_template.docx"
-output_path = r"C:\Projects\prag\data\001_updated.docx"
+input_path = r"../data/001_template.docx"
+output_path = r"../data/001_updated.docx"
 
 update_word_template(input_path, output_path, replacements, image_replacements)
