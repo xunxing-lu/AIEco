@@ -104,3 +104,4 @@ pyaudio
 pygame
 webrtcvad
 pvporcupine
+demucs

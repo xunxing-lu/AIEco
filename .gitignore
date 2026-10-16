@@ -4,6 +4,7 @@ data/
 img/
 venv/
 .env
+audio/audio
 credentials.json
 token.json
 
